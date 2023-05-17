@@ -32,7 +32,7 @@ def calculate_correlations(data):
 
     df = pd.DataFrame(data, columns=headers)
     if "id" in df.columns:
-        df = df.drop(columns=["id"])  # Usuń kolumnę 'id' z obliczeń korelacji
+        df = df.drop(columns=["id"])  # Usuń kolumnę "id" z obliczeń korelacji
 
     correlations = df.corr().round(2)
     correlations_data = correlations.values.tolist()
