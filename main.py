@@ -75,14 +75,14 @@ def open_csv():
                 [sg.Button('Wyświetl histogram', key='-HIST_PLOT-', disabled=True)]
             ]
             layout_subtable = [
-                [sg.Text('Liczba wierszy do podtablicy:')],
-                [sg.Slider(range=(1, len(data) - 1), orientation='horizontal', size=(10, 20), default_value=1,
-                           key='-SUBTABLE_ROWS-', enable_events=True)],
+                [sg.Text('Liczba wierszy do wyświetlenia:'),
+                 sg.Slider(range=(0, len(data) - 1), default_value=0, orientation='horizontal', key='-SUBTABLE_ROWS-',
+                           enable_events=True)],
                 [sg.Text('Wybierz kolumny do podtablicy:')],
-                [sg.Listbox(column_list, size=(10, 6), key='-SUBTABLE_COLUMNS-', select_mode='extended')],
+                [sg.Listbox(column_list, size=(10, 6), key='-SUBTABLE_COLUMNS-', select_mode='extended',
+                            enable_events=True)],
                 [sg.Button('Utwórz podtablicę', key='-CREATE_SUBTABLE-', disabled=True)],
-                [sg.Table(values=[], headings=data[0], auto_size_columns=True, justification='left',
-                          key='-SUBTABLE_DATA-')]
+                [sg.Multiline('', key='-SUBTABLE_DATA-', size=(60, 15), autoscroll=True, disabled=True)]
             ]
 
             tab1 = sg.Tab('Dane', layout_data)
@@ -102,6 +102,7 @@ def open_csv():
             ]
 
             window = sg.Window('Dane CSV', layout)
+
             while True:
                 event, values = window.read()
                 if event == sg.WINDOW_CLOSED:
@@ -123,9 +124,13 @@ def open_csv():
                     num_rows = int(values['-SUBTABLE_ROWS-'])
                     selected_columns = values['-SUBTABLE_COLUMNS-']
                     if num_rows > 0 and selected_columns:
-                        subtable_data = [data[row_index + 1] for row_index in range(num_rows)]
+                        subtable_data = [data[row_index] for row_index in range(num_rows)]
                         subtable_data = [[row[col_index] for col_index in selected_columns] for row in subtable_data]
-                        window['-SUBTABLE_DATA-'].update(values=subtable_data)
+                        header = selected_columns
+                        subtable_data = [header] + subtable_data
+                        subtable_data_text = '\n'.join(['\t'.join(map(str, row)) for row in subtable_data])
+                        window['-SUBTABLE_DATA-'].update(value=subtable_data_text, disabled=False)
+
                         window['-CREATE_SUBTABLE-'].update(disabled=False)
                 if event == '-CREATE_SUBTABLE-':
                     num_rows = int(values['-SUBTABLE_ROWS-'])
@@ -133,8 +138,12 @@ def open_csv():
                     if num_rows > 0 and selected_columns:
                         subtable_data = [data[row_index + 1] for row_index in range(num_rows)]
                         subtable_data = [[row[col_index] for col_index in selected_columns] for row in subtable_data]
-                        subtable_data.insert(0, headers)  # Dodaj wiersz nagłówków
-                        sg.popup('Utworzono podtabelę:\n\n' + str(subtable_data))
+
+                        sg.popup('Podtabela utworzona!', title='Informacja')
+                        sg.popup_scrolled('Podtabela:', '\n'.join([str(row) for row in subtable_data]),
+                                          title='Podtabela')
+                    else:
+                        sg.popup('Nie wybrano odpowiednich kolumn lub liczby wierszy!', title='Błąd')
                 if event == '-PLOT-':
                     attribute1 = values['-ATTRIBUTE1-']
                     attribute2 = values['-ATTRIBUTE2-']
