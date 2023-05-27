@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 def calculate_statistics(data):
     headers = data[0]
     data = data[1:]
@@ -25,7 +24,6 @@ def calculate_statistics(data):
 
     return statistics_data
 
-
 def calculate_correlations(data):
     headers = data[0]
     data = data[1:]
@@ -39,7 +37,6 @@ def calculate_correlations(data):
     correlations_headers = correlations.columns.tolist()
 
     return correlations_data, correlations_headers
-
 
 def open_csv():
     file_path = sg.popup_get_file('Wybierz plik CSV', file_types=(("CSV Files", "*.csv"),))
@@ -56,6 +53,7 @@ def open_csv():
             correlations_table_data.insert(0, [""] + correlations_headers)  # Dodaj wiersz nagłówków
 
             attribute_list = data[0][1:]  # Lista atrybutów bez "id"
+            column_list = list(range(len(attribute_list)))  # Lista numerów kolumn
 
             layout_data = [
                 [sg.Table(values=data[1:], headings=data[0], auto_size_columns=True, justification='left')]
@@ -67,13 +65,8 @@ def open_csv():
             ]
             layout_correlations = [
                 [sg.Table(values=correlations_table_data,
+                          headings=[""] + correlations_headers,
                           auto_size_columns=True, justification='left')],
-                [sg.Text('Wybierz atrybuty do wyświetlenia na wykresie:')],
-                [sg.Text('Pierwszy atrybut:'),
-                 sg.Combo(attribute_list, size=(30, 1), key='-ATTRIBUTE1-', enable_events=True)],
-                [sg.Text('Drugi atrybut:'),
-                 sg.Combo(attribute_list, size=(30, 1), key='-ATTRIBUTE2-', enable_events=True)],
-                [sg.Button('Wyświetl wykres', key='-PLOT-', disabled=True)]
             ]
             layout_histogram = [
                 [sg.Text('Wybierz atrybut do wyświetlenia na histogramie:')],
@@ -81,14 +74,31 @@ def open_csv():
                  sg.Combo(attribute_list, size=(30, 1), key='-HIST_ATTRIBUTE-', enable_events=True)],
                 [sg.Button('Wyświetl histogram', key='-HIST_PLOT-', disabled=True)]
             ]
+            layout_subtable = [
+                [sg.Text('Liczba wierszy do podtablicy:')],
+                [sg.Slider(range=(1, len(data) - 1), orientation='horizontal', size=(10, 20), default_value=1,
+                           key='-SUBTABLE_ROWS-', enable_events=True)],
+                [sg.Text('Wybierz kolumny do podtablicy:')],
+                [sg.Listbox(column_list, size=(10, 6), key='-SUBTABLE_COLUMNS-', select_mode='extended')],
+                [sg.Button('Utwórz podtablicę', key='-CREATE_SUBTABLE-', disabled=True)],
+                [sg.Table(values=[], headings=data[0], auto_size_columns=True, justification='left',
+                          key='-SUBTABLE_DATA-')]
+            ]
 
             tab1 = sg.Tab('Dane', layout_data)
             tab2 = sg.Tab('Miar statystycznych', layout_statistics)
             tab3 = sg.Tab('Korelacje', layout_correlations)
             tab4 = sg.Tab('Histogram', layout_histogram)
+            tab5 = sg.Tab('Podtabela', layout_subtable)
 
             layout = [
-                [sg.TabGroup([[tab1, tab2, tab3, tab4]], enable_events=True)]
+                [sg.Text('Wybierz atrybuty do wyświetlenia na wykresie:')],
+                [sg.Text('Pierwszy atrybut:'),
+                 sg.Combo(attribute_list, size=(30, 1), key='-ATTRIBUTE1-', enable_events=True)],
+                [sg.Text('Drugi atrybut:'),
+                 sg.Combo(attribute_list, size=(30, 1), key='-ATTRIBUTE2-', enable_events=True)],
+                [sg.Button('Wyświetl wykres', key='-PLOT-', disabled=True)],
+                [sg.TabGroup([[tab1, tab2, tab3, tab4, tab5]], enable_events=True)]
             ]
 
             window = sg.Window('Dane CSV', layout)
@@ -109,47 +119,44 @@ def open_csv():
                         window['-HIST_PLOT-'].update(disabled=False)
                     else:
                         window['-HIST_PLOT-'].update(disabled=True)
+                if event == '-SUBTABLE_ROWS-':
+                    num_rows = int(values['-SUBTABLE_ROWS-'])
+                    selected_columns = values['-SUBTABLE_COLUMNS-']
+                    if num_rows > 0 and selected_columns:
+                        subtable_data = [data[row_index + 1] for row_index in range(num_rows)]
+                        subtable_data = [[row[col_index] for col_index in selected_columns] for row in subtable_data]
+                        window['-SUBTABLE_DATA-'].update(values=subtable_data)
+                        window['-CREATE_SUBTABLE-'].update(disabled=False)
+                if event == '-CREATE_SUBTABLE-':
+                    num_rows = int(values['-SUBTABLE_ROWS-'])
+                    selected_columns = values['-SUBTABLE_COLUMNS-']
+                    if num_rows > 0 and selected_columns:
+                        subtable_data = [data[row_index + 1] for row_index in range(num_rows)]
+                        subtable_data = [[row[col_index] for col_index in selected_columns] for row in subtable_data]
+                        subtable_data.insert(0, headers)  # Dodaj wiersz nagłówków
+                        sg.popup('Utworzono podtabelę:\n\n' + str(subtable_data))
                 if event == '-PLOT-':
                     attribute1 = values['-ATTRIBUTE1-']
                     attribute2 = values['-ATTRIBUTE2-']
-
-                    # Pobierz dane dla wybranych atrybutów
-                    attribute1_data = [float(row[data[0].index(attribute1)]) for row in data[1:]]
-                    attribute2_data = [float(row[data[0].index(attribute2)]) for row in data[1:]]
-
-                    # Tworzenie wykresu
-                    plt.scatter(attribute1_data, attribute2_data)
-                    plt.xlabel(attribute1)
-                    plt.ylabel(attribute2)
-                    plt.title(f'Zależność między {attribute1} a {attribute2}')
-                    plt.show()
-
+                    if attribute1 != attribute2:
+                        x = [float(row[attribute_list.index(attribute1) + 1]) for row in data[1:]]
+                        y = [float(row[attribute_list.index(attribute2) + 1]) for row in data[1:]]
+                        plt.scatter(x, y)
+                        plt.xlabel(attribute1)
+                        plt.ylabel(attribute2)
+                        plt.title('Wykres zależności między atrybutami')
+                        plt.show()
                 if event == '-HIST_PLOT-':
                     selected_attribute = values['-HIST_ATTRIBUTE-']
                     if selected_attribute:
-                        attribute_data = [float(row[data[0].index(selected_attribute)]) for row in data[1:]]
-
-                        # Tworzenie histogramu
-                        plt.hist(attribute_data, bins=10)
+                        column_data = [float(row[attribute_list.index(selected_attribute) + 1]) for row in data[1:]]
+                        plt.hist(column_data, bins=10)
                         plt.xlabel(selected_attribute)
                         plt.ylabel('Liczba wystąpień')
-                        plt.title(f'Histogram dla atrybutu {selected_attribute}')
+                        plt.title('Histogram')
                         plt.show()
 
             window.close()
 
 
-layout = [
-    [sg.Button('Otwórz plik CSV', key='-OPEN-')],
-]
-
-window = sg.Window('Aplikacja GUI', layout)
-
-while True:
-    event, values = window.read()
-    if event == sg.WINDOW_CLOSED:
-        break
-    if event == '-OPEN-':
-        open_csv()
-
-window.close()
+open_csv()
