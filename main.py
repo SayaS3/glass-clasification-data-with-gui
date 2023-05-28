@@ -2,7 +2,6 @@ import PySimpleGUI as sg
 import csv
 import statistics
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 
 def calculate_statistics(data):
@@ -92,7 +91,7 @@ def open_csv():
             tab5 = sg.Tab('Podtabela', layout_subtable)
 
             layout = [
-                [sg.Text('Wybierz atrybuty do wyświetlenia na wykresie:')],
+                [sg.Text('Wybierz atrybuty do wyświetlenia zaleznosci między nimi na wykresie:')],
                 [sg.Text('Pierwszy atrybut:'),
                  sg.Combo(attribute_list, size=(30, 1), key='-ATTRIBUTE1-', enable_events=True)],
                 [sg.Text('Drugi atrybut:'),
